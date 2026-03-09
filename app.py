@@ -70,7 +70,7 @@ def main():
         if menu == "🏠 Início":
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                st.markdown("<h1 style='text-align: center;'>Imobiliária Janeide Xavier</h1>", unsafe_allow_html=True)
+                st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier</h1>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #475569;'>Entender para atender.</p>", unsafe_allow_html=True)
                 st.write("---")
                 st.markdown("""
@@ -165,12 +165,21 @@ def main():
                     st.subheader("🔍 Raio-X do Talento")
                     nome_sel = st.selectbox("Selecione um profissional:", df_corr['Nome'].unique())
                     if nome_sel:
-                        f = df_corr[df_corr['Nome'] == nome_sel].iloc[0]
-                        with st.container(border=True):
-                            st.markdown(f"**Perfil:** `{f['Perfil']}` | **Habilidade:** `{f['Habilidade_Principal']}`")
-                            nota = float(f['Nota_Performance']) / 10
-                            st.progress(nota)
-                            st.caption(f"Performance Atual: {f['Nota_Performance']}/10")
+                    f = df_corr[df_corr['Nome'] == nome_sel].iloc[0]
+                    with st.container(border=True):
+                        # Usando 'Especialidade' para bater com a sua planilha
+                        perfil_f = f.get('Especialidade', 'Não Definido')
+                        hab_f = f.get('Habilidade_Principal', 'Não Definido')
+                        
+                        st.markdown(f"**Especialidade:** `{perfil_f}` | **Habilidade:** `{hab_f}`")
+                        
+                        # Tratamento seguro para a nota
+                        try:
+                            nota_valor = float(f.get('Nota_Performance', 0))
+                            st.progress(min(nota_valor / 10, 1.0))
+                            st.caption(f"Performance Atual: {nota_valor}/10")
+                        except:
+                            st.caption("Performance: Nota não disponível")
             else:
                 st.warning("Cadastre corretores para ativar o Analytics.")
 
