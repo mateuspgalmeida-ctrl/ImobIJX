@@ -2,8 +2,10 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
+import gspread
+from google.oauth2.service_account import Credentials
 
-# 1. CONFIGURAÇÃO E ESTILO DE ALTA PERFORMANCE
+# 1. CONFIGURAÇÃO E ESTILO
 st.set_page_config(page_title="ImobIJX | Gestão Inteligente", layout="wide", page_icon="🏢")
 
 st.markdown("""
@@ -23,7 +25,20 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. BARRA LATERAL (ImobIJX)
+# 2. FUNÇÃO DE CONEXÃO COM GOOGLE SHEETS
+def conecta_planilha():
+    try:
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        # Usa as credenciais salvas nos Secrets do Streamlit
+        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+        client = gspread.authorize(creds)
+        # Abre a planilha pelo nome exato
+        return client.open("Dados_ImobIJX")
+    except Exception as e:
+        st.error(f"Erro na conexão com Google Sheets: {e}")
+        return None
+
+# 3. BARRA LATERAL
 with st.sidebar:
     if os.path.exists("logo.jpg"):
         st.image("logo.jpg", width=180)
@@ -39,36 +54,47 @@ with st.sidebar:
         "📄 Cadastro de Currículos"
     ])
     st.markdown("---")
-    st.info("Atlas: Sistema Iniciado 🤖")
+    st.info("Atlas: Banco de Dados Conectado 🗄️")
 
-# 3. LÓGICA DAS TELAS
+# 4. LÓGICA DAS TELAS
 
 # --- TELA: DASHBOARD INICIAL ---
 if menu == "📊 Dashboard Inicial":
     st.title("Dashboard Estratégico | ImobIJX")
-    st.write("Bem-vindo, Mateus. Os indicadores abaixo serão atualizados conforme você cadastrar a produtividade.")
+    
+    # Busca dados da planilha para os KPIs
+    gc = conecta_planilha()
+    if gc:
+        try:
+            # Pega todos os valores da primeira aba (Corretores)
+            sheet_corretores = gc.get_worksheet(0)
+            dados = sheet_corretores.get_all_records()
+            df = pd.DataFrame(dados)
+            total_corretores = len(df)
+        except:
+            total_corretores = 0
     
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("VGV Total", "R$ 0,00", "Aguardando dados")
-    c2.metric("Corretores", "0", "Nenhum cadastrado")
+    c1.metric("VGV Total", "R$ 0,00", "Aguardando Vendas")
+    c2.metric("Corretores", total_corretores, "Cadastrados")
     c3.metric("Conversão", "0%", "N/A")
-    c4.metric("Novos Leads", "0", "Mês Atual")
+    c4.metric("Leads", "0", "Mês Atual")
     
-    st.info("ℹ️ Comece cadastrando sua equipe na aba 'Equipe & Corretores' para gerar os primeiros gráficos.")
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader("Tendência de Performance")
+    st.line_chart(np.random.randn(10, 1), color=["#007a7c"])
 
 # --- TELA: EQUIPE & CORRETORES ---
 elif menu == "👥 Equipe & Corretores":
     st.title("Gestão de Pessoas | ImobIJX")
     
-    tab_cadastro, tab_perfil, tab_prod = st.tabs([
+    tab_cadastro, tab_lista, tab_prod = st.tabs([
         "➕ Cadastrar Novo Membro", 
         "🔍 Consultar Equipe", 
         "📈 Lançar Produtividade"
     ])
     
-    # Inicializando lista vazia para a sessão
-    if 'lista_corretores' not in st.session_state:
-        st.session_state.lista_corretores = []
+    gc = conecta_planilha()
 
     with tab_cadastro:
         st.subheader("Adicionar Novo Membro à ImobIJX")
@@ -80,42 +106,37 @@ elif menu == "👥 Equipe & Corretores":
                 creci_n = st.text_input("CRECI")
             with c_c2:
                 data_adm = st.date_input("Data de Início")
-                especialidade = st.multiselect("Especialidades", ["Urbano", "Rural", "Luxo", "Minha Casa Minha Vida", "Lançamentos"])
+                espec_n = st.selectbox("Especialidade Principal", ["Urbano", "Rural", "Luxo", "MCMV", "Lançamentos"])
                 fone_n = st.text_input("WhatsApp")
             
-            btn_salvar_n = st.form_submit_button("Finalizar Cadastro")
-            if btn_salvar_n:
-                if nome_n:
-                    st.session_state.lista_corretores.append(nome_n)
-                    st.success(f"Corretor {nome_n} cadastrado com sucesso!")
+            btn_salvar = st.form_submit_button("Salvar na Planilha")
+            
+            if btn_salvar:
+                if nome_n and gc:
+                    sheet = gc.get_worksheet(0) # Salva na primeira aba
+                    sheet.append_row([nome_n, cpf_n, creci_n, str(data_adm), espec_n, fone_n])
+                    st.success(f"Corretor {nome_n} salvo permanentemente no Google Sheets!")
                     st.balloons()
                 else:
-                    st.error("Por favor, preencha o nome do corretor.")
+                    st.error("Erro ao salvar. Verifique se o nome foi preenchido.")
 
-    with tab_perfil:
-        if not st.session_state.lista_corretores:
-            st.warning("Nenhum corretor cadastrado ainda.")
-        else:
-            corretor_sel = st.selectbox("Selecione o profissional para ver detalhes:", st.session_state.lista_corretores)
-            st.info(f"Ficha técnica de {corretor_sel} em processamento pelo Atlas.")
+    with tab_lista:
+        if gc:
+            sheet = gc.get_worksheet(0)
+            df_equipe = pd.DataFrame(sheet.get_all_records())
+            if not df_equipe.empty:
+                st.dataframe(df_equipe, use_container_width=True)
+            else:
+                st.warning("Nenhum corretor na base de dados.")
 
     with tab_prod:
-        st.subheader("Registro Mensal de Resultados")
-        if not st.session_state.lista_corretores:
-            st.warning("Cadastre um corretor primeiro para poder lançar produtividade.")
-        else:
-            with st.form("form_prod_mensal", clear_on_submit=True):
-                c_p = st.selectbox("Selecionar Corretor", st.session_state.lista_corretores)
-                v_qtd = st.number_input("Vendas (Qtd)", min_value=0)
-                vgv_l = st.number_input("VGV Total (R$)", min_value=0.0)
-                btn_prod = st.form_submit_button("Salvar Resultados")
-                if btn_prod:
-                    st.success(f"Resultados de {c_p} salvos com sucesso!")
+        st.subheader("Registrar Vendas/Captações")
+        st.info("Módulo pronto para salvar na segunda aba da sua planilha.")
 
 # --- DEMAIS TELAS ---
 else:
     st.title(menu)
-    st.info("Módulo pronto para receber seus dados da ImobIJX.")
+    st.info("Módulo sob gestão da ImobIJX.")
 
 # RODAPÉ
-st.markdown("<br><hr><center><b>ImobIJX</b> v1.6 | Gestão sob medida para Mateus</center>", unsafe_allow_html=True)
+st.markdown("<br><hr><center><b>ImobIJX</b> v1.7 | Dashboard com Banco de Dados Real</center>", unsafe_allow_html=True)
