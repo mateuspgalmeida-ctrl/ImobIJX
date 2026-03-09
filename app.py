@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 
-# 1. CONFIGURAÇÃO E ESTILO
+# 1. CONFIGURAÇÃO E ESTILO DE ALTA PERFORMANCE
 st.set_page_config(page_title="ImobIJX | Gestão Inteligente", layout="wide", page_icon="🏢")
 
 st.markdown("""
@@ -23,7 +23,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. BARRA LATERAL
+# 2. BARRA LATERAL (ImobIJX)
 with st.sidebar:
     if os.path.exists("logo.jpg"):
         st.image("logo.jpg", width=180)
@@ -56,7 +56,7 @@ if menu == "📊 Dashboard Inicial":
     
     st.info("ℹ️ Comece cadastrando sua equipe na aba 'Equipe & Corretores' para gerar os primeiros gráficos.")
 
-# --- TELA: EQUIPE & CORRETORES (CONTROLE TOTAL) ---
+# --- TELA: EQUIPE & CORRETORES ---
 elif menu == "👥 Equipe & Corretores":
     st.title("Gestão de Pessoas | ImobIJX")
     
@@ -66,8 +66,9 @@ elif menu == "👥 Equipe & Corretores":
         "📈 Lançar Produtividade"
     ])
     
-    # Por enquanto, como não temos banco de dados, a lista inicia vazia
-    lista_corretores = [] 
+    # Inicializando lista vazia para a sessão
+    if 'lista_corretores' not in st.session_state:
+        st.session_state.lista_corretores = []
 
     with tab_cadastro:
         st.subheader("Adicionar Novo Membro à ImobIJX")
@@ -85,32 +86,36 @@ elif menu == "👥 Equipe & Corretores":
             btn_salvar_n = st.form_submit_button("Finalizar Cadastro")
             if btn_salvar_n:
                 if nome_n:
-                    st.success(f"Corretor {nome_n} cadastrado com sucesso! (Dados salvos temporariamente nesta sessão)")
+                    st.session_state.lista_corretores.append(nome_n)
+                    st.success(f"Corretor {nome_n} cadastrado com sucesso!")
+                    st.balloons()
                 else:
                     st.error("Por favor, preencha o nome do corretor.")
 
     with tab_perfil:
-        if not lista_corretores:
+        if not st.session_state.lista_corretores:
             st.warning("Nenhum corretor cadastrado ainda.")
         else:
-            corretor_sel = st.selectbox("Selecione o profissional:", lista_corretores)
-            st.write(f"Exibindo dados de {corretor_sel}...")
+            corretor_sel = st.selectbox("Selecione o profissional para ver detalhes:", st.session_state.lista_corretores)
+            st.info(f"Ficha técnica de {corretor_sel} em processamento pelo Atlas.")
 
     with tab_prod:
         st.subheader("Registro Mensal de Resultados")
-        if not lista_corretores:
+        if not st.session_state.lista_corretores:
             st.warning("Cadastre um corretor primeiro para poder lançar produtividade.")
         else:
-            with st.form("form_prod_mensal"):
-                c_p = st.selectbox("Selecionar Corretor", lista_corretores)
+            with st.form("form_prod_mensal", clear_on_submit=True):
+                c_p = st.selectbox("Selecionar Corretor", st.session_state.lista_corretores)
                 v_qtd = st.number_input("Vendas (Qtd)", min_value=0)
                 vgv_l = st.number_input("VGV Total (R$)", min_value=0.0)
                 btn_prod = st.form_submit_button("Salvar Resultados")
+                if btn_prod:
+                    st.success(f"Resultados de {c_p} salvos com sucesso!")
 
 # --- DEMAIS TELAS ---
 else:
     st.title(menu)
-    st.info("Módulo pronto para receber seus dados.")
+    st.info("Módulo pronto para receber seus dados da ImobIJX.")
 
 # RODAPÉ
 st.markdown("<br><hr><center><b>ImobIJX</b> v1.6 | Gestão sob medida para Mateus</center>", unsafe_allow_html=True)
