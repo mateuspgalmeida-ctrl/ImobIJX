@@ -66,7 +66,7 @@ def main():
         if menu == "🏠 Início":
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier</h1>", unsafe_allow_html=True)
+                st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier LTDA</h1>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #475569;'>Entender para atender.</p>", unsafe_allow_html=True)
                 st.write("---")
                 st.markdown("""
