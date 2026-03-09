@@ -13,8 +13,6 @@ st.set_page_config(page_title="ImobIJX | Portal de Gestão", layout="wide", page
 st.markdown("""
     <style>
     .stApp { background-color: #fcfcfc; font-family: 'Inter', sans-serif; }
-    
-    /* KPI Cards */
     .kpi-card {
         background: white; padding: 20px; border-radius: 12px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
@@ -22,8 +20,6 @@ st.markdown("""
     }
     .kpi-label { color: #64748b; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
     .kpi-val { color: #1e293b; font-size: 1.8rem; font-weight: 800; }
-
-    /* Botões */
     .stButton>button {
         background-color: #007a7c; color: white; border-radius: 8px;
         border: none; padding: 10px 20px; font-weight: bold; width: 100%;
@@ -70,34 +66,29 @@ def main():
         if menu == "🏠 Início":
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier</h1>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #475569;'>Entender para atender.</p>", unsafe_allow_html=True)
+                st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>ImobIJX</h1>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #475569;'>A nova era da gestão imobiliária em Feira de Santana.</p>", unsafe_allow_html=True)
                 st.write("---")
                 st.markdown("""
                 ### Sobre a Plataforma
                 O **ImobIJX** é o sistema central de inteligência da nossa imobiliária. 
                 Aqui conectamos talentos, monitoramos resultados e transformamos dados em decisões.
-                
-                **O que você busca hoje?**
-                - 🚀 **Crescimento Profissional:** Acesse a aba 'Carreira'.
-                - 🔑 **Gestão Interna:** Área exclusiva para administradores.
                 """)
         
         elif menu == "💼 Carreira":
             st.title("🎯 Oportunidades ImobIJX")
             st.info("Deixe seu currículo e faça parte do nosso time de elite.")
             with st.form("cv_publico"):
-                c1, c2 = st.columns(2)
-                nome = c1.text_input("Nome Completo")
-                zap = c2.text_input("WhatsApp")
-                link = st.text_input("Link do LinkedIn ou Currículo (Drive)")
-                exp = st.text_area("Fale brevemente sobre sua experiência")
+                nome = st.text_input("Nome Completo")
+                zap = st.text_input("WhatsApp")
+                link = st.text_input("Link do Currículo (Drive/LinkedIn)")
+                exp = st.text_area("Fale sobre sua experiência")
                 if st.form_submit_button("Submeter Candidatura"):
                     gc = conecta_planilha()
                     if gc:
                         gc.get_worksheet(2).append_row([str(datetime.now().strftime("%d/%m/%Y %H:%M")), nome, zap, exp, link])
                         st.balloons()
-                        st.success("Candidatura enviada com sucesso!")
+                        st.success("Candidatura enviada!")
 
         elif menu == "🔐 Acesso Restrito":
             col1, col2, col3 = st.columns([1, 1.5, 1])
@@ -117,11 +108,16 @@ def main():
     else:
         gc = conecta_planilha()
         if not gc:
-            st.error("Erro ao conectar com a planilha.")
+            st.error("Erro de conexão.")
             return
 
         df_corr = pd.DataFrame(gc.get_worksheet(0).get_all_records())
         
+        # Limpeza e Conversão de Dados (Evita erros de cálculo)
+        if not df_corr.empty:
+            if 'Nota_Performance' in df_corr.columns:
+                df_corr['Nota_Performance'] = pd.to_numeric(df_corr['Nota_Performance'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
+
         if menu == "📊 Dashboard":
             st.title("📊 Indicadores de Performance")
             c1, c2, c3 = st.columns(3)
@@ -142,10 +138,10 @@ def main():
             if not df_corr.empty:
                 c1, c2, c3 = st.columns(3)
                 with c1:
-                    nota_media = df_corr['Nota_Performance'].mean() if 'Nota_Performance' in df_corr.columns else 0
+                    nota_media = df_corr['Nota_Performance'].mean()
                     st.markdown(f'<div class="kpi-card"><p class="kpi-label">Média de Performance</p><p class="kpi-val">{nota_media:.1f}/10</p></div>', unsafe_allow_html=True)
                 with c2:
-                    perfil_dom = df_corr['Perfil'].mode()[0] if 'Perfil' in df_corr.columns else "N/A"
+                    perfil_dom = df_corr['Especialidade'].mode()[0] if 'Especialidade' in df_corr.columns else "N/A"
                     st.markdown(f'<div class="kpi-card"><p class="kpi-label">Perfil Dominante</p><p class="kpi-val">{perfil_dom}</p></div>', unsafe_allow_html=True)
                 with c3:
                     skill_dom = df_corr['Habilidade_Principal'].mode()[0] if 'Habilidade_Principal' in df_corr.columns else "N/A"
@@ -159,27 +155,25 @@ def main():
                     ranking = df_corr.sort_values(by='Nota_Performance', ascending=False).head(5)
                     for i, row in enumerate(ranking.itertuples(), 1):
                         medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "👤"
-                        st.write(f"{medal} **{i}º {row.Nome}** - `{row.Nota_Performance}`")
+                        st.write(f"{medal} **{i}º {row.Nome}** - `{row.Nota_Performance:.1f}`")
 
                 with col_ficha:
                     st.subheader("🔍 Raio-X do Talento")
                     nome_sel = st.selectbox("Selecione um profissional:", df_corr['Nome'].unique())
                     if nome_sel:
-                    f = df_corr[df_corr['Nome'] == nome_sel].iloc[0]
-                    with st.container(border=True):
-                        # Usando 'Especialidade' para bater com a sua planilha
-                        perfil_f = f.get('Especialidade', 'Não Definido')
-                        hab_f = f.get('Habilidade_Principal', 'Não Definido')
-                        
-                        st.markdown(f"**Especialidade:** `{perfil_f}` | **Habilidade:** `{hab_f}`")
-                        
-                        # Tratamento seguro para a nota
-                        try:
-                            nota_valor = float(f.get('Nota_Performance', 0))
-                            st.progress(min(nota_valor / 10, 1.0))
-                            st.caption(f"Performance Atual: {nota_valor}/10")
-                        except:
-                            st.caption("Performance: Nota não disponível")
+                        f = df_corr[df_corr['Nome'] == nome_sel].iloc[0]
+                        with st.container(border=True):
+                            # AJUSTE: Usando 'Especialidade' conforme sua planilha
+                            esp_f = f.get('Especialidade', 'N/A')
+                            hab_f = f.get('Habilidade_Principal', 'N/A')
+                            st.markdown(f"**Especialidade:** `{esp_f}` | **Habilidade:** `{hab_f}`")
+                            
+                            try:
+                                nota_f = float(f.get('Nota_Performance', 0))
+                                st.progress(min(nota_f / 10, 1.0))
+                                st.caption(f"Performance Atual: {nota_f}/10")
+                            except:
+                                st.caption("Nota indisponível")
             else:
                 st.warning("Cadastre corretores para ativar o Analytics.")
 
@@ -193,17 +187,18 @@ def main():
                     c1, c2 = st.columns(2)
                     n = c1.text_input("Nome")
                     cr = c2.text_input("CRECI")
-                    perf = st.selectbox("Perfil", ["Executor", "Comunicador", "Analítico", "Planejador"])
-                    skill = st.selectbox("Habilidade Principal", ["Vendas Luxo", "Contratos", "Captação", "Networking"])
+                    # Ajustado para salvar na coluna 'Especialidade'
+                    esp = st.selectbox("Especialidade", ["Urbano", "Rural", "Luxo", "Lançamentos"])
+                    skill = st.selectbox("Habilidade Principal", ["Vendas", "Contratos", "Captação", "Networking"])
                     nota_ini = st.slider("Nota Inicial", 0.0, 10.0, 5.0)
                     if st.form_submit_button("Efetuar Cadastro"):
-                        gc.get_worksheet(0).append_row([n, "", cr, str(datetime.now().date()), perf, "", skill, nota_ini])
+                        # Ordem baseada na sua planilha: Nome, CPF, CRECI, Data, Especialidade, WhatsApp, Habilidade, Nota
+                        gc.get_worksheet(0).append_row([n, "", cr, str(datetime.now().date()), esp, "", skill, nota_ini])
                         st.success("Cadastrado com sucesso!")
                         st.rerun()
 
         elif menu == "💰 Vendas":
             st.title("💰 Controle Financeiro")
-            st.info("Módulo de registro de transações.")
             with st.form("venda_fin"):
                 corretores = df_corr['Nome'].tolist()
                 sel_corr = st.selectbox("Corretor", corretores if corretores else ["Sem dados"])
