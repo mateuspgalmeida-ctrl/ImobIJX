@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Configuração da página e Cores da Logomarca
-st.set_page_config(page_title="EmpImobIA - Gestão de Talentos", layout="wide")
+st.set_page_config(page_title="ImobIJX - Gestão de Talentos", layout="wide")
 
 # CSS para injetar as cores da sua logo (Verdes e Tons Neutros)
 st.markdown("""
@@ -16,8 +16,8 @@ st.markdown("""
 
 # --- SIDEBAR (Barra Lateral) ---
 with st.sidebar:
-    st.image("1001016039.jpg", width=150) # Use o caminho da sua imagem aqui
-    st.title("EmpImobIA")
+    st.image("logo.jpg", width=150) # Use o caminho da sua imagem aqui
+    st.title("ImobIJX")
     st.markdown("---")
     menu = st.radio("Navegação", ["Painel de Controle", "Equipe Ativa", "Recrutamento", "Match Comportamental", "Performance (VRIO)"])
 
