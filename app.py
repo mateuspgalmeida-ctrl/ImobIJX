@@ -9,7 +9,16 @@ from datetime import datetime
 # CONFIGURAÇÃO DE PÁGINA
 st.set_page_config(page_title="ImobIJX | Portal de Gestão", layout="wide", page_icon="🏢")
 
-# --- ESTILO CSS AVANÇADO ---
+# --- TAXAS DE COMISSÃO CONFIGURÁVEIS ---
+TAXAS_COMISSAO = {
+    "Venda (Imóvel Novo/Planta)": 0.05,
+    "Venda (Usado/Terceiros)": 0.06,
+    "Aluguel (1º Aluguel Integral)": 1.00,
+    "Administração Mensal": 0.10,
+    "Consultoria/Avaliação": 0.20
+}
+
+# --- ESTILO CSS ---
 st.markdown("""
     <style>
     .stApp { background-color: #fcfcfc; font-family: 'Inter', sans-serif; }
@@ -20,10 +29,6 @@ st.markdown("""
     }
     .kpi-label { color: #64748b; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
     .kpi-val { color: #1e293b; font-size: 1.8rem; font-weight: 800; }
-    .stButton>button {
-        background-color: #007a7c; color: white; border-radius: 8px;
-        border: none; padding: 10px 20px; font-weight: bold; width: 100%;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -37,7 +42,6 @@ def conecta_planilha():
     except:
         return None
 
-# --- LÓGICA DE NAVEGAÇÃO ---
 def main():
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
@@ -56,7 +60,6 @@ def main():
         else:
             st.success(f"Logado: {st.session_state.get('user_logado', 'Gestor')}")
             menu = st.radio("PAINEL ADMIN", ["📊 Dashboard", "🧠 People Analytics", "👥 Corretores", "💰 Vendas", "📄 Currículos"])
-            st.write("---")
             if st.button("🚪 Sair do Sistema"):
                 st.session_state["password_correct"] = False
                 st.rerun()
@@ -66,152 +69,107 @@ def main():
         if menu == "🏠 Início":
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier LTDA</h1>", unsafe_allow_html=True)
-                st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #475569;'>Entender para atender.</p>", unsafe_allow_html=True)
-                st.write("---")
-                st.markdown("""
-                ### Sobre a Plataforma
-                O **ImobIJX** é o sistema central de inteligência da nossa imobiliária. 
-                Aqui conectamos talentos, monitoramos resultados e transformamos dados em decisões.
-                """)
-        
+                st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>ImobIJX</h1>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; font-size: 1.2rem;'>A inteligência imobiliária de Feira de Santana.</p>", unsafe_allow_html=True)
         elif menu == "💼 Carreira":
             st.title("🎯 Oportunidades ImobIJX")
-            st.info("Deixe seu currículo e faça parte do nosso time de elite.")
             with st.form("cv_publico"):
                 nome = st.text_input("Nome Completo")
                 zap = st.text_input("WhatsApp")
-                link = st.text_input("Link do Currículo (Drive/LinkedIn)")
-                exp = st.text_area("Fale sobre sua experiência")
-                if st.form_submit_button("Submeter Candidatura"):
-                    gc = conecta_planilha()
-                    if gc:
-                        gc.get_worksheet(2).append_row([str(datetime.now().strftime("%d/%m/%Y %H:%M")), nome, zap, exp, link])
-                        st.balloons()
-                        st.success("Candidatura enviada!")
-
+                link = st.text_input("Link do Currículo")
+                if st.form_submit_button("Candidatar-se"):
+                    st.success("Candidatura enviada!")
         elif menu == "🔐 Acesso Restrito":
-            col1, col2, col3 = st.columns([1, 1.5, 1])
-            with col2:
-                st.title("🔐 Login")
-                u = st.text_input("Usuário")
-                p = st.text_input("Senha", type="password")
-                if st.button("Acessar Portal"):
-                    if u in st.secrets["credentials"]["usernames"] and p == st.secrets["credentials"]["usernames"][u]:
-                        st.session_state["password_correct"] = True
-                        st.session_state["user_logado"] = u
-                        st.rerun()
-                    else:
-                        st.error("Credenciais inválidas.")
+            st.title("🔐 Login")
+            u = st.text_input("Usuário")
+            p = st.text_input("Senha", type="password")
+            if st.button("Entrar"):
+                if u in st.secrets["credentials"]["usernames"] and p == st.secrets["credentials"]["usernames"][u]:
+                    st.session_state["password_correct"] = True
+                    st.session_state["user_logado"] = u
+                    st.rerun()
 
     # --- TELAS ADMINISTRATIVAS ---
     else:
         gc = conecta_planilha()
-        if not gc:
-            st.error("Erro de conexão.")
-            return
+        if not gc: return
 
+        # Carregamento de Dados
         df_corr = pd.DataFrame(gc.get_worksheet(0).get_all_records())
-        
-        # Limpeza e Conversão de Dados (Evita erros de cálculo)
+        df_vendas = pd.DataFrame(gc.get_worksheet(1).get_all_records())
+
+        # Tratamento de Dados
         if not df_corr.empty:
-            if 'Nota_Performance' in df_corr.columns:
-                df_corr['Nota_Performance'] = pd.to_numeric(df_corr['Nota_Performance'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
+            df_corr['Nota_Performance'] = pd.to_numeric(df_corr['Nota_Performance'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
+        
+        if not df_vendas.empty:
+            df_vendas['Valor'] = pd.to_numeric(df_vendas['Valor'].astype(str).str.replace('R$', '').str.replace('.', '').str.replace(',', '.'), errors='coerce').fillna(0)
+            df_vendas['Comissão'] = df_vendas.apply(lambda x: x['Valor'] * TAXAS_COMISSAO.get(x['Tipo_Operacao'], 0.06), axis=1)
 
         if menu == "📊 Dashboard":
-            st.title("📊 Indicadores de Performance")
+            st.title("📊 Painel de Controle")
+            vgv = df_vendas['Valor'].sum() if not df_vendas.empty else 0
+            receita = df_vendas['Comissão'].sum() if not df_vendas.empty else 0
+            
             c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown(f'<div class="kpi-card"><p class="kpi-label">Time de Vendas</p><p class="kpi-val">{len(df_corr)} Corretores</p></div>', unsafe_allow_html=True)
-            with c2:
-                st.markdown('<div class="kpi-card"><p class="kpi-label">VGV Acumulado</p><p class="kpi-val">R$ 0,00</p></div>', unsafe_allow_html=True)
-            with c3:
-                total_cvs = len(gc.get_worksheet(2).get_all_records())
-                st.markdown(f'<div class="kpi-card"><p class="kpi-label">Banco de Talentos</p><p class="kpi-val">{total_cvs} CVs</p></div>', unsafe_allow_html=True)
+            with c1: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Time</p><p class="kpi-val">{len(df_corr)}</p></div>', unsafe_allow_html=True)
+            with c2: st.markdown(f'<div class="kpi-card"><p class="kpi-label">VGV Total</p><p class="kpi-val">R$ {vgv:,.2f}</p></div>', unsafe_allow_html=True)
+            with c3: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Receita (Comissões)</p><p class="kpi-val">R$ {receita:,.2f}</p></div>', unsafe_allow_html=True)
             
             st.write("---")
-            st.subheader("📈 Atividade Recente")
-            st.bar_chart(np.random.randint(1, 10, 7), color="#007a7c")
+            st.subheader("🏆 Melhores do Mês (Top 3 Performance)")
+            if not df_corr.empty:
+                cols = st.columns(3)
+                top3 = df_corr.sort_values(by='Nota_Performance', ascending=False).head(3)
+                for i, row in enumerate(top3.itertuples()):
+                    with cols[i]:
+                        st.success(f"**{i+1}º {row.Nome}**\n\nNota: {row.Nota_Performance}")
 
         elif menu == "🧠 People Analytics":
-            st.title("🧠 Inteligência de Dados e Talentos")
-            if not df_corr.empty:
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    nota_media = df_corr['Nota_Performance'].mean()
-                    st.markdown(f'<div class="kpi-card"><p class="kpi-label">Média de Performance</p><p class="kpi-val">{nota_media:.1f}/10</p></div>', unsafe_allow_html=True)
-                with c2:
-                    perfil_dom = df_corr['Especialidade'].mode()[0] if 'Especialidade' in df_corr.columns else "N/A"
-                    st.markdown(f'<div class="kpi-card"><p class="kpi-label">Perfil Dominante</p><p class="kpi-val">{perfil_dom}</p></div>', unsafe_allow_html=True)
-                with c3:
-                    skill_dom = df_corr['Habilidade_Principal'].mode()[0] if 'Habilidade_Principal' in df_corr.columns else "N/A"
-                    st.markdown(f'<div class="kpi-card"><p class="kpi-label">Skill Principal</p><p class="kpi-val">{skill_dom}</p></div>', unsafe_allow_html=True)
-
-                st.divider()
-                col_rank, col_ficha = st.columns([1, 1.5])
-
-                with col_rank:
-                    st.subheader("🏆 Ranking de Elite")
-                    ranking = df_corr.sort_values(by='Nota_Performance', ascending=False).head(5)
-                    for i, row in enumerate(ranking.itertuples(), 1):
-                        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "👤"
-                        st.write(f"{medal} **{i}º {row.Nome}** - `{row.Nota_Performance:.1f}`")
-
-                with col_ficha:
-                    st.subheader("🔍 Raio-X do Talento")
-                    nome_sel = st.selectbox("Selecione um profissional:", df_corr['Nome'].unique())
-                    if nome_sel:
-                        f = df_corr[df_corr['Nome'] == nome_sel].iloc[0]
-                        with st.container(border=True):
-                            # AJUSTE: Usando 'Especialidade' conforme sua planilha
-                            esp_f = f.get('Especialidade', 'N/A')
-                            hab_f = f.get('Habilidade_Principal', 'N/A')
-                            st.markdown(f"**Especialidade:** `{esp_f}` | **Habilidade:** `{hab_f}`")
-                            
-                            try:
-                                nota_f = float(f.get('Nota_Performance', 0))
-                                st.progress(min(nota_f / 10, 1.0))
-                                st.caption(f"Performance Atual: {nota_f}/10")
-                            except:
-                                st.caption("Nota indisponível")
-            else:
-                st.warning("Cadastre corretores para ativar o Analytics.")
-
-        elif menu == "👥 Corretores":
-            st.title("👥 Gestão da Equipe")
-            t1, t2 = st.tabs(["Consultar Base", "Adicionar Corretor"])
-            with t1:
-                st.dataframe(df_corr, use_container_width=True, hide_index=True)
-            with t2:
-                with st.form("cad_admin"):
-                    c1, c2 = st.columns(2)
-                    n = c1.text_input("Nome")
-                    cr = c2.text_input("CRECI")
-                    # Ajustado para salvar na coluna 'Especialidade'
-                    esp = st.selectbox("Especialidade", ["Urbano", "Rural", "Luxo", "Lançamentos"])
-                    skill = st.selectbox("Habilidade Principal", ["Vendas", "Contratos", "Captação", "Networking"])
-                    nota_ini = st.slider("Nota Inicial", 0.0, 10.0, 5.0)
-                    if st.form_submit_button("Efetuar Cadastro"):
-                        # Ordem baseada na sua planilha: Nome, CPF, CRECI, Data, Especialidade, WhatsApp, Habilidade, Nota
-                        gc.get_worksheet(0).append_row([n, "", cr, str(datetime.now().date()), esp, "", skill, nota_ini])
-                        st.success("Cadastrado com sucesso!")
-                        st.rerun()
+            st.title("🧠 Inteligência e Match")
+            
+            # Match Inteligente
+            tipo_imovel = st.selectbox("Buscar especialista para:", ["Luxo", "Rural", "Urbano", "Lançamentos"])
+            sugeridos = df_corr[df_corr['Especialidade'] == tipo_imovel]
+            if not sugeridos.empty:
+                top = sugeridos.sort_values(by='Nota_Performance', ascending=False).iloc[0]
+                st.info(f"💡 **Sugestão do Atlas:** O melhor perfil para esse imóvel é **{top['Nome']}**.")
+            
+            st.divider()
+            col_a, col_b = st.columns([1, 1.5])
+            with col_a:
+                st.subheader("📊 Mix de Especialidades")
+                st.bar_chart(df_corr['Especialidade'].value_counts(), color="#007a7c")
+            with col_b:
+                st.subheader("🔍 Raio-X Individual")
+                nome_sel = st.selectbox("Selecionar Corretor:", df_corr['Nome'].unique())
+                if nome_sel:
+                    f = df_corr[df_corr['Nome'] == nome_sel].iloc[0]
+                    st.write(f"**Especialidade:** {f.get('Especialidade', 'N/A')}")
+                    st.progress(float(f.get('Nota_Performance', 0))/10)
 
         elif menu == "💰 Vendas":
-            st.title("💰 Controle Financeiro")
-            with st.form("venda_fin"):
-                corretores = df_corr['Nome'].tolist()
-                sel_corr = st.selectbox("Corretor", corretores if corretores else ["Sem dados"])
-                valor = st.number_input("Valor da Venda (R$)", min_value=0.0)
-                if st.form_submit_button("Registrar Transação"):
-                    st.success("Venda registrada para análise!")
+            st.title("💰 Gestão Financeira")
+            c_v1, c_v2 = st.columns([1, 2])
+            with c_v1:
+                with st.form("add_venda"):
+                    st.subheader("Nova Operação")
+                    corr = st.selectbox("Corretor", df_corr['Nome'].tolist())
+                    tipo = st.selectbox("Tipo", list(TAXAS_COMISSAO.keys()))
+                    val = st.number_input("Valor (R$)", min_value=0.0)
+                    if st.form_submit_button("Registrar"):
+                        gc.get_worksheet(1).append_row([str(datetime.now().date()), corr, val, tipo])
+                        st.success("Registrado!")
+                        st.rerun()
+            with c_v2:
+                st.subheader("Extrato")
+                st.dataframe(df_vendas, use_container_width=True)
 
-        elif menu == "📄 Currículos":
-            st.title("📄 Banco de Currículos")
-            df_cv = pd.DataFrame(gc.get_worksheet(2).get_all_records())
-            st.dataframe(df_cv, use_container_width=True)
+        elif menu == "👥 Corretores":
+            st.title("👥 Gestão de Equipe")
+            st.dataframe(df_corr, use_container_width=True)
 
-    st.markdown("<br><p style='text-align: center; color: #cbd5e1; font-size: 11px;'>© 2026 ImobIJX | Atlas Intelligence</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #cbd5e1; font-size: 11px;'>© 2026 ImobIJX | Atlas</p>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
