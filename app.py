@@ -149,7 +149,7 @@ def main():
     else: # TELAS PÚBLICAS
         if menu == "🏠 Início":
             st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier</h1>", unsafe_allow_html=True)
-            st.write("### Bem-vindo ao portal de gestão da Imobiliária Janete Xavier.")
+            st.markdown("<h3 style='text-align: center;'>Bem-vindo ao portal de gestão da Imobiliária Janete Xavier.</h3>", unsafe_allow_html=True)
             st.info("Utilize o menu lateral para navegar ou acessar a área restrita.")
             
         elif menu == "🎯 Trabalhe Conosco":
