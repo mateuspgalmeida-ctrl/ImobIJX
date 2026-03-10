@@ -173,7 +173,7 @@ def main():
     # --- TELAS PÚBLICAS ---
     if not st.session_state["password_correct"]:
         if menu == "🏠 Início":
-            st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>ImobIJX</h1>", unsafe_allow_html=True)
+            st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier LTDA</h1>", unsafe_allow_html=True)
             st.markdown("<p style='text-align: center;'>Portal de Gestão Inteligente - Feira de Santana.</p>", unsafe_allow_html=True)
         elif menu == "🔐 Acesso Restrito":
             st.title("🔐 Login Administrativo")
