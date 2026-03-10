@@ -40,7 +40,7 @@ def conecta_planilha():
         creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
         client = gspread.authorize(creds)
         return client.open("Dados_ImobIJX")
-    except Exception as e:
+    except Exception:
         return None
 
 def main():
@@ -74,11 +74,12 @@ def main():
         hoje = datetime.now()
         meses_pt = {1:'Jan', 2:'Fev', 3:'Mar', 4:'Abr', 5:'Mai', 6:'Jun', 7:'Jul', 8:'Ago', 9:'Set', 10:'Out', 11:'Nov', 12:'Dez'}
         
-        # Inicialização de Variáveis de Filtro
+        # Estrutura padrão para evitar KeyError
+        colunas_vendas = ['Data', 'Corretor', 'Valor', 'Tipo_Operacao', 'Comissão', 'Ano', 'Mes_Num']
+        df_ano = pd.DataFrame(columns=colunas_vendas)
+        df_mes = pd.DataFrame(columns=colunas_vendas)
         ano_sel = hoje.year
         mes_sel_nome = meses_pt[hoje.month]
-        df_ano = pd.DataFrame()
-        df_mes = pd.DataFrame()
 
         if not df_vendas_raw.empty:
             df_vendas_raw['Data'] = pd.to_datetime(df_vendas_raw['Data'], errors='coerce')
@@ -87,11 +88,11 @@ def main():
             df_vendas_raw['Valor'] = pd.to_numeric(df_vendas_raw['Valor'].astype(str).str.replace('R$', '').str.replace('.', '').str.replace(',', '.'), errors='coerce').fillna(0)
             df_vendas_raw['Comissão'] = df_vendas_raw.apply(lambda x: x['Valor'] * TAXAS_COMISSAO.get(x['Tipo_Operacao'], 0.06), axis=1)
 
-            # FILTROS NA SIDEBAR (Centralizados)
+            # FILTROS SIDEBAR
             st.sidebar.divider()
             st.sidebar.subheader("📅 Período de Análise")
-            anos_disp = sorted(df_vendas_raw['Ano'].unique(), reverse=True)
-            ano_sel = st.sidebar.selectbox("Ano", anos_disp if len(anos_disp) > 0 else [hoje.year])
+            anos_disp = sorted([int(a) for a in df_vendas_raw['Ano'].dropna().unique()], reverse=True)
+            ano_sel = st.sidebar.selectbox("Ano", anos_disp if anos_disp else [hoje.year])
             
             mes_sel_nome = st.sidebar.selectbox("Mês", list(meses_pt.values()), index=hoje.month-1)
             mes_sel_num = [k for k, v in meses_pt.items() if v == mes_sel_nome][0]
@@ -99,50 +100,51 @@ def main():
             df_ano = df_vendas_raw[df_vendas_raw['Ano'] == ano_sel]
             df_mes = df_ano[df_ano['Mes_Num'] == mes_sel_num]
 
-        # --- TELA DASHBOARD INTEGRADA ---
+        # --- TELA DASHBOARD ---
         if menu == "📊 Dashboard":
             st.title(f"📊 Painel de Resultados {ano_sel}")
             
-            # 1. KPIs DO MÊS SELECIONADO
+            # 1. KPIs (Seguros contra KeyError)
+            vgv_m = df_mes["Valor"].sum() if "Valor" in df_mes.columns else 0
+            rec_m = df_mes["Comissão"].sum() if "Comissão" in df_mes.columns else 0
+            time_n = len(df_corr) if not df_corr.empty else 0
+
             st.subheader(f"📍 Resumo: {mes_sel_nome}")
             c1, c2, c3 = st.columns(3)
-            with c1: st.markdown(f'<div class="kpi-card"><p class="kpi-label">VGV ({mes_sel_nome})</p><p class="kpi-val">R$ {df_mes["Valor"].sum():,.2f}</p></div>', unsafe_allow_html=True)
-            with c2: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Receita ({mes_sel_nome})</p><p class="kpi-val">R$ {df_mes["Comissão"].sum():,.2f}</p></div>', unsafe_allow_html=True)
-            with c3: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Corretores Ativos</p><p class="kpi-val">{len(df_corr)}</p></div>', unsafe_allow_html=True)
+            with c1: st.markdown(f'<div class="kpi-card"><p class="kpi-label">VGV ({mes_sel_nome})</p><p class="kpi-val">R$ {vgv_m:,.2f}</p></div>', unsafe_allow_html=True)
+            with c2: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Receita ({mes_sel_nome})</p><p class="kpi-val">R$ {rec_m:,.2f}</p></div>', unsafe_allow_html=True)
+            with c3: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Corretores Ativos</p><p class="kpi-val">{time_n}</p></div>', unsafe_allow_html=True)
 
             st.divider()
 
-            # 2. GRÁFICOS LADO A LADO
+            # 2. GRÁFICOS
             col_esq, col_dir = st.columns(2)
             
             with col_esq:
                 st.subheader("🏆 VGV por Corretor (Anual)")
-                if not df_ano.empty:
+                if not df_ano.empty and "Valor" in df_ano.columns:
                     rank = df_ano.groupby('Corretor')['Valor'].sum().reset_index().sort_values(by='Valor', ascending=False)
-                    fig_rank = px.bar(rank, x='Corretor', y='Valor', color='Corretor', text_auto='.2s', 
-                                     color_discrete_sequence=px.colors.qualitative.Prism)
+                    fig_rank = px.bar(rank, x='Corretor', y='Valor', color='Corretor', text_auto='.2s', color_discrete_sequence=px.colors.qualitative.Prism)
                     fig_rank.update_layout(showlegend=False)
                     st.plotly_chart(fig_rank, use_container_width=True)
                 else:
-                    st.info("Aguardando dados anuais.")
+                    st.info("Nenhum dado anual para exibir.")
 
             with col_dir:
-                st.subheader(f"📈 Resultados do Mês ({mes_sel_nome})")
-                if not df_mes.empty:
-                    # Gráfico Horizontal de Linhas (Performance Diária)
+                st.subheader(f"📈 Resultados Diários ({mes_sel_nome})")
+                if not df_mes.empty and "Valor" in df_mes.columns:
                     df_mes['Dia'] = df_mes['Data'].dt.day
                     evol_diaria = df_mes.groupby('Dia')['Valor'].sum().reset_index()
-                    fig_linha = px.line(evol_diaria, x='Valor', y='Dia', orientation='h', markers=True,
-                                       color_discrete_sequence=['#007a7c'])
+                    fig_linha = px.line(evol_diaria, x='Valor', y='Dia', orientation='h', markers=True, color_discrete_sequence=['#007a7c'])
                     st.plotly_chart(fig_linha, use_container_width=True)
                 else:
-                    st.info("Aguardando dados do mês.")
+                    st.info("Nenhum dado mensal para exibir.")
 
         # --- RESTANTE DOS MÓDULOS ---
         elif menu == "💰 Vendas":
             st.title("💰 Gestão de Vendas")
-            st.subheader(f"Extrato Detalhado: {mes_sel_nome}/{ano_sel}")
-            st.dataframe(df_mes[['Data', 'Corretor', 'Valor', 'Tipo_Operacao', 'Comissão']], use_container_width=True)
+            if not df_mes.empty:
+                st.dataframe(df_mes[['Data', 'Corretor', 'Valor', 'Tipo_Operacao', 'Comissão']], use_container_width=True)
             
             with st.expander("➕ Nova Operação"):
                 with st.form("nova_venda"):
@@ -158,7 +160,6 @@ def main():
         elif menu == "🧠 People Analytics":
             st.title("🧠 Inteligência de Equipe")
             if not df_corr.empty:
-                st.subheader("Distribuição de Especialistas")
                 fig_pizza = px.pie(df_corr, names='Especialidade', hole=0.4, color_discrete_sequence=px.colors.qualitative.Bold)
                 st.plotly_chart(fig_pizza, use_container_width=True)
 
@@ -166,11 +167,11 @@ def main():
             st.title("👥 Banco de Dados")
             st.dataframe(df_corr, use_container_width=True)
 
-    # --- TELAS PÚBLICAS ---
+    # --- TELA INICIAL ---
     if not st.session_state["password_correct"]:
         if menu == "🏠 Início":
-            st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>ImobIJX</h1>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center;'>A nova era da gestão imobiliária em Feira de Santana.</p>", unsafe_allow_html=True)
+            st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier LTDA</h1>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center;'>Entender para atender.</p>", unsafe_allow_html=True)
         elif menu == "🔐 Acesso Restrito":
             u = st.text_input("Usuário")
             p = st.text_input("Senha", type="password")
