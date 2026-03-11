@@ -36,8 +36,8 @@ st.markdown("""
     .kpi-label { color: #64748b; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
     .kpi-val { color: #1e293b; font-size: 1.8rem; font-weight: 800; }
     .birthday-alert {
-        padding: 10px; background-color: #fdf2f2; border-left: 5px solid #ec4899;
-        border-radius: 4px; color: #9d174d; margin-bottom: 20px;
+        padding: 15px; background-color: #fdf2f2; border-left: 5px solid #ec4899;
+        border-radius: 4px; color: #9d174d; margin-bottom: 20px; font-weight: 500;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -72,6 +72,7 @@ def limpar_moeda(valor):
         return 0.0
 
 def main():
+    # Inicializa o estado de login se não existir
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
 
@@ -98,13 +99,13 @@ def main():
             
             if st.button("🚪 Sair"):
                 st.session_state["password_correct"] = False
+                st.session_state["user_logado"] = None
                 st.rerun()
 
     # --- CARREGAMENTO DE DADOS ---
     df_corr = buscar_dados(0)
     df_vendas_raw = buscar_dados(1)
     
-    # Tratamento de Vendas
     if not df_vendas_raw.empty:
         df_vendas_raw['Data'] = pd.to_datetime(df_vendas_raw['Data'], errors='coerce')
         df_vendas_raw['Valor'] = df_vendas_raw['Valor'].apply(limpar_moeda)
@@ -119,18 +120,14 @@ def main():
             
             # --- TRATAMENTO SEGURO DE ANIVERSARIANTES ---
             if not df_corr.empty:
-                # Normaliza nomes de colunas (remove espaços e garante 'Nascimento')
                 df_corr.columns = [c.strip() for c in df_corr.columns]
-                
                 if 'Nascimento' in df_corr.columns:
                     df_corr['Mes_Nasc'] = pd.to_datetime(df_corr['Nascimento'], errors='coerce').dt.month
-                    aniversariantes = df_corr[df_corr['Mes_Nasc'] == datetime.now().month]['Nome'].tolist()
-                    if aniversariantes:
-                        st.markdown(f'<div class="birthday-alert">🎂 <b>Aniversariantes do Mês:</b> {", ".join(aniversariantes)}</div>', unsafe_allow_html=True)
+                    aniv = df_corr[df_corr['Mes_Nasc'] == datetime.now().month]['Nome'].tolist()
+                    if aniv:
+                        st.markdown(f'<div class="birthday-alert">🎂 <b>Aniversariantes do Mês:</b> {", ".join(aniv)}</div>', unsafe_allow_html=True)
             
-            # Filtro para os cards
             df_mes = df_vendas_raw[(df_vendas_raw['Ano'] == ano_sel) & (df_vendas_raw['Mes_Num'] == mes_sel_num)] if not df_vendas_raw.empty else pd.DataFrame()
-            
             vgv_m = df_mes["Valor"].sum() if not df_mes.empty else 0
             perc_meta = min(vgv_m / META_MENSAL_LOJA, 1.0)
 
@@ -139,7 +136,7 @@ def main():
             with c2: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Meta da Loja</p><p class="kpi-val">{perc_meta:.1%}</p></div>', unsafe_allow_html=True)
             with c3: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Receita Est.</p><p class="kpi-val">R$ {df_mes["Comissão"].sum() if not df_mes.empty else 0:,.2f}</p></div>', unsafe_allow_html=True)
             
-            st.progress(perc_meta, text=f"Progresso da Meta Mensal (R$ {META_MENSAL_LOJA:,.0f})")
+            st.progress(perc_meta, text=f"Progresso da Meta (Meta: R$ {META_MENSAL_LOJA:,.0f})")
 
             st.divider()
             col_a, col_b = st.columns(2)
@@ -164,11 +161,11 @@ def main():
     else: # TELAS PÚBLICAS
         if menu == "🏠 Início":
             st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier LTDA</h1>", unsafe_allow_html=True)
-            st.info("Utilize o menu lateral para navegar ou acessar a área restrita.")
+            st.info("Utilize o menu lateral para acessar a área restrita.")
             
         elif menu == "🎯 Trabalhe Conosco":
             st.title("🎯 Faça parte do nosso time")
-            with st.form("cadastro_cv"):
+            with st.form("cadastro_cv", clear_on_submit=True):
                 nome_cv = st.text_input("Nome Completo")
                 tel_cv = st.text_input("Telefone/WhatsApp")
                 exp_cv = st.selectbox("Experiência", ["Nenhuma", "Menos de 1 ano", "1 a 3 anos", "Mais de 3 anos"])
@@ -176,20 +173,25 @@ def main():
                 if st.form_submit_button("Enviar Currículo"):
                     gc = conecta_planilha()
                     if gc:
-                        gc.get_worksheet(2).append_row([str(datetime.now()), nome_cv, tel_cv, exp_cv, obs_cv])
+                        gc.get_worksheet(2).append_row([str(datetime.now().strftime('%d/%m/%Y %H:%M')), nome_cv, tel_cv, exp_cv, obs_cv])
                         st.success("Dados enviados com sucesso!")
 
         elif menu == "🔐 Painel Restrito":
-            u = st.text_input("Usuário"); p = st.text_input("Senha", type="password")
-            if st.button("Acessar"):
-                # Você pode mudar as senhas aqui ou no Secrets
+            st.subheader("Acesso ao Sistema")
+            u = st.text_input("Usuário")
+            p = st.text_input("Senha", type="password")
+            
+            # O botão 'primary' e a ordem do rerun evitam o duplo clique
+            if st.button("Acessar", type="primary"):
                 try:
                     if u in st.secrets["credentials"]["usernames"] and p == st.secrets["credentials"]["usernames"][u]:
-                        st.session_state["password_correct"], st.session_state["user_logado"] = True, u; st.rerun()
+                        st.session_state["password_correct"] = True
+                        st.session_state["user_logado"] = u
+                        st.rerun() # Atualiza a página imediatamente após validar
                     else:
-                        st.error("Credenciais incorretas.")
-                except:
-                    st.error("Erro ao acessar secrets.")
+                        st.error("Usuário ou senha incorretos.")
+                except Exception:
+                    st.error("Erro ao validar credenciais. Verifique o Secrets do Streamlit.")
 
     st.markdown("<p style='text-align: center; color: #cbd5e1; font-size: 11px; margin-top:50px;'>© 2026 ImobIJX | Atlas Intelligence</p>", unsafe_allow_html=True)
 
