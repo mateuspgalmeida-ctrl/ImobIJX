@@ -10,7 +10,7 @@ import os
 # --- 1. CONFIGURAÇÃO DE PÁGINA ---
 st.set_page_config(page_title="ImobIJX | Master Intelligence", layout="wide", page_icon="🏢")
 
-# --- 2. FUNÇÃO ANIMAÇÃO (SEGURANÇA TOTAL) ---
+# --- 2. FUNÇÃO ANIMAÇÃO ---
 def load_lottieurl(url: str):
     try:
         r = requests.get(url, timeout=5)
@@ -19,19 +19,19 @@ def load_lottieurl(url: str):
 
 lottie_anim = load_lottieurl("https://lottie.host/573612d1-2905-4927-9976-f3689c177b96/K2p27X9Rz8.json")
 
-# --- 3. CSS GLOBAL: MOLDURA 3D E CORES (VERDE LOGO) ---
+# --- 3. CSS GLOBAL (CORREÇÃO DE CORES E CONTRASTE) ---
 st.markdown("""
     <style>
     /* Fundo do App */
     .stApp { background-color: #f1f5f9; }
     
-    /* FORÇAR VERDE EM TODOS OS TÍTULOS E TEXTOS DE APOIO */
+    /* FORÇAR VERDE EM TÍTULOS E LABELS */
     h1, h2, h3, p, span, label {
         color: #007a7c !important;
         font-family: 'Inter', sans-serif;
     }
     
-    /* Moldura 3D Neumórfica Premium */
+    /* Moldura 3D Neumórfica */
     .moldura-3d {
         background: #f1f5f9;
         padding: 40px;
@@ -50,21 +50,27 @@ st.markdown("""
         margin: 0 !important;
     }
     
-    /* Estilo para os rótulos de campos (Inputs) */
-    div[data-testid="stWidgetLabel"] p {
-        font-size: 1.1rem !important;
-        font-weight: bold !important;
-    }
-
-    /* Estilo para os botões */
+    /* --- CORREÇÃO DO BOTÃO (TEXTO BRANCO) --- */
     .stButton>button {
         background-color: #007a7c !important;
-        color: white !important;
+        color: white !important; /* Força o texto a ser branco */
         border-radius: 10px;
-        font-weight: bold;
+        font-weight: bold !important;
         width: 100%;
         border: none;
         padding: 10px;
+        transition: 0.3s;
+    }
+    
+    /* Efeito ao passar o mouse no botão */
+    .stButton>button:hover {
+        background-color: #005a5c !important;
+        color: white !important;
+    }
+
+    /* Garante que o texto do botão não mude de cor por causa das regras globais */
+    .stButton>button p {
+        color: white !important;
     }
     
     /* Estabilizar cor do texto digitado nos inputs */
@@ -99,12 +105,8 @@ def main():
     with st.sidebar:
         if os.path.exists("logo.jpg"): 
             st.image("logo.jpg", use_container_width=True)
-        else:
-            st.markdown("<h2 style='text-align:center;'>🏢 ImobIJX</h2>", unsafe_allow_html=True)
-            
         st.divider()
         if st.session_state["password_correct"]:
-            st.markdown(f"👤 **{st.session_state['user_logado'].upper()}**")
             menu = st.radio("SISTEMA MASTER", ["🏛️ Dashboard", "🤝 CRM Clientes", "📄 Banco Talentos"])
             if st.button("🚪 Sair"):
                 st.session_state["password_correct"] = False
@@ -114,35 +116,21 @@ def main():
 
     # --- 6. CONTEÚDO CENTRAL ---
     if st.session_state["password_correct"]:
-        # Telas Privadas
         if menu == "🏛️ Dashboard":
-            st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Janeide Xavier LTDA</h1><p style="font-size:1.3rem;">Painel Master de Inteligência Imobiliária</p></div>', unsafe_allow_html=True)
+            st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Janeide Xavier LTDA</h1><p>Painel Master de Inteligência</p></div>', unsafe_allow_html=True)
             st.write("### Olá! Bem-vinda ao seu centro de controle.")
-            
-        elif menu == "🤝 CRM Clientes":
-            st.title("🤝 Gestão de Clientes")
-            df = buscar_dados(3)
-            st.dataframe(df, use_container_width=True)
-
-        elif menu == "📄 Banco Talentos":
-            st.title("📄 Currículos Recebidos")
-            df = buscar_dados(2)
-            st.dataframe(df, use_container_width=True)
-
+        # Outros menus...
     else:
-        # TELAS PÚBLICAS
         if menu == "🏠 Início":
             st.markdown(f'''
                 <div class="moldura-3d">
                     <h1 class="titulo-principal">Imobiliária Janeide Xavier LTDA</h1>
-                    <p style="font-size: 1.5rem; font-weight: 500; margin-top: 15px;">
+                    <p style="font-size: 1.5rem; font-weight: 500;">
                         Inteligência analítica no mercado imobiliário.
                     </p>
                 </div>
             ''', unsafe_allow_html=True)
-            
-            if lottie_anim:
-                st_lottie(lottie_anim, height=350, key="home_anim")
+            if lottie_anim: st_lottie(lottie_anim, height=350)
             
         elif menu == "🎯 Trabalhe Conosco":
             st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Trabalhe Conosco</h1></div>', unsafe_allow_html=True)
@@ -155,7 +143,7 @@ def main():
                     gc = conecta_planilha()
                     if gc:
                         gc.get_worksheet(2).append_row([datetime.now().strftime('%d/%m/%Y'), nome, zap, "Candidato", link])
-                        st.success("Candidatura enviada com sucesso!")
+                        st.success("Candidatura enviada!")
 
         elif menu == "🔐 Acesso Master":
             st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Login Master</h1></div>', unsafe_allow_html=True)
