@@ -144,8 +144,8 @@ def main():
         if menu == "🏠 Início":
             st.markdown(f'''
                 <div class="moldura-3d">
-                    <h1 class="titulo-principal">Janeide Xavier LTDA</h1>
-                    <p class="subtitulo-principal">Transformando dados em lares em Feira de Santana</p>
+                    <h1 class="titulo-principal">Imobiliária Janeide Xavier LTDA</h1>
+                    <p class="subtitulo-principal">Transformando dados em negociações bem-sucedidas em Feira de Santana</p>
                 </div>
             ''', unsafe_allow_html=True)
             
