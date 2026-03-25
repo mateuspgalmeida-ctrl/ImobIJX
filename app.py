@@ -19,12 +19,19 @@ def load_lottieurl(url: str):
 
 lottie_anim = load_lottieurl("https://lottie.host/573612d1-2905-4927-9976-f3689c177b96/K2p27X9Rz8.json")
 
-# --- 3. CSS PARA MOLDURA 3D E FORÇAR CORES NOS MÓDULOS ---
+# --- 3. CSS GLOBAL: MOLDURA 3D E CORES (VERDE LOGO) ---
 st.markdown("""
     <style>
+    /* Fundo do App */
     .stApp { background-color: #f1f5f9; }
     
-    /* Moldura 3D Neumórfica (Neumorphism) */
+    /* FORÇAR VERDE EM TODOS OS TÍTULOS E TEXTOS DE APOIO */
+    h1, h2, h3, p, span, label {
+        color: #007a7c !important;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Moldura 3D Neumórfica Premium */
     .moldura-3d {
         background: #f1f5f9;
         padding: 40px;
@@ -37,55 +44,33 @@ st.markdown("""
     }
     
     .titulo-principal {
-        color: #007a7c !important;
         font-size: 3.5rem !important;
         font-weight: 900 !important;
         letter-spacing: -1px;
         margin: 0 !important;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.05);
     }
     
-    .subtitulo-principal {
-        color: #64748b !important;
-        font-size: 1.3rem !important;
-        font-weight: 500;
-        margin-top: 10px;
+    /* Estilo para os rótulos de campos (Inputs) */
+    div[data-testid="stWidgetLabel"] p {
+        font-size: 1.1rem !important;
+        font-weight: bold !important;
     }
 
-    /* --- NOVA CLASSE PARA FORÇAR VERDE NOS MÓDULOS --- */
-    .modulo-restrito {
-        background-color: white;
-        padding: 30px;
-        border-radius: 20px;
-        box-shadow: 10px 10px 30px #d1d5db;
-        margin-top: 20px;
-    }
-    
-    /* Força Verde (#007a7c) em TUDO dentro do modulo-restrito: h3, p, labels */
-    .modulo-restrito h3, 
-    .modulo-restrito p, 
-    .modulo-restrito label {
-        color: #007a7c !important;
-        font-weight: bold !important;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Estilo para os labels específicos de input (text_input, selectbox) */
-    .modulo-restrito label {
-        font-size: 1.1rem !important;
-        margin-bottom: 5px;
-        display: block;
-    }
-    
-    /* Estilo para os botões dentro dos módulos */
-    .modulo-restrito .stButton>button {
+    /* Estilo para os botões */
+    .stButton>button {
         background-color: #007a7c !important;
         color: white !important;
         border-radius: 10px;
-        width: 100%;
         font-weight: bold;
+        width: 100%;
+        border: none;
+        padding: 10px;
     }
     
+    /* Estabilizar cor do texto digitado nos inputs */
+    .stTextInput input {
+        color: #1e293b !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -98,13 +83,11 @@ def conecta_planilha():
         return gspread.authorize(creds).open("Dados_ImobIJX")
     except: return None
 
-@st.cache_data(ttl=300)
 def buscar_dados(aba_index):
     try:
         gc = conecta_planilha()
         if gc:
-            df = pd.DataFrame(gc.get_worksheet(aba_index).get_all_records())
-            return df
+            return pd.DataFrame(gc.get_worksheet(aba_index).get_all_records())
         return pd.DataFrame()
     except: return pd.DataFrame()
 
@@ -122,7 +105,7 @@ def main():
         st.divider()
         if st.session_state["password_correct"]:
             st.markdown(f"👤 **{st.session_state['user_logado'].upper()}**")
-            menu = st.radio("SISTEMA MASTER", ["🏛️ Dashboard", "🔥 Zonas de Calor", "🤝 CRM Clientes", "📄 Banco Talentos"])
+            menu = st.radio("SISTEMA MASTER", ["🏛️ Dashboard", "🤝 CRM Clientes", "📄 Banco Talentos"])
             if st.button("🚪 Sair"):
                 st.session_state["password_correct"] = False
                 st.rerun()
@@ -131,36 +114,30 @@ def main():
 
     # --- 6. CONTEÚDO CENTRAL ---
     if st.session_state["password_correct"]:
-        # Telas Privadas (Mateus, Janeide, Gessica)
+        # Telas Privadas
         if menu == "🏛️ Dashboard":
-            df_clientes = buscar_dados(3)
-            st.markdown(f'''
-                <div class="moldura-3d">
-                    <h1 class="titulo-principal">Janeide Xavier LTDA</h1>
-                    <p class="subtitulo-principal">Painel Master de Inteligência Imobiliária</p>
-                </div>
-            ''', unsafe_allow_html=True)
-            st.success(f"Logado como: {st.session_state['user_logado'].capitalize()}")
-            # ... resto do dashboard ...
-
+            st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Janeide Xavier LTDA</h1><p style="font-size:1.3rem;">Painel Master de Inteligência Imobiliária</p></div>', unsafe_allow_html=True)
+            st.write("### Olá! Bem-vinda ao seu centro de controle.")
+            
         elif menu == "🤝 CRM Clientes":
             st.title("🤝 Gestão de Clientes")
-            df_clientes = buscar_dados(3)
-            st.dataframe(df_clientes, use_container_width=True)
+            df = buscar_dados(3)
+            st.dataframe(df, use_container_width=True)
 
         elif menu == "📄 Banco Talentos":
             st.title("📄 Currículos Recebidos")
-            df_talentos = buscar_dados(2)
-            st.dataframe(df_talentos, use_container_width=True)
-        # ... outras telas ...
+            df = buscar_dados(2)
+            st.dataframe(df, use_container_width=True)
 
     else:
         # TELAS PÚBLICAS
         if menu == "🏠 Início":
             st.markdown(f'''
                 <div class="moldura-3d">
-                    <h1 class="titulo-principal">Janeide Xavier LTDA</h1>
-                    <p class="subtitulo-principal">Onde a tradição de Feira de Santana encontra a inteligência de dados.</p>
+                    <h1 class="titulo-principal">Imobiliária Janeide Xavier LTDA</h1>
+                    <p style="font-size: 1.5rem; font-weight: 500; margin-top: 15px;">
+                        Inteligência analítica no mercado imobiliário.
+                    </p>
                 </div>
             ''', unsafe_allow_html=True)
             
@@ -169,39 +146,31 @@ def main():
             
         elif menu == "🎯 Trabalhe Conosco":
             st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Trabalhe Conosco</h1></div>', unsafe_allow_html=True)
-            
-            # --- NOVA ESTRUTURA PARA FORÇAR CORES ---
-            with st.markdown('<div class="modulo-restrito">', unsafe_allow_html=True):
-                st.markdown("### Faça parte do nosso time de elite")
-                with st.form("cv_recrutamento"):
-                    nome = st.text_input("Nome Completo")
-                    zap = st.text_input("WhatsApp (com DDD)")
-                    link = st.text_input("Link do LinkedIn ou Currículo")
-                    if st.form_submit_button("Enviar Candidatura"):
-                        gc = conecta_planilha()
-                        if gc:
-                            gc.get_worksheet(2).append_row([datetime.now().strftime('%d/%m/%Y'), nome, zap, "Candidato", link])
-                            st.success("Candidatura enviada com sucesso!")
-            st.markdown('</div>', unsafe_allow_html=True) # Fecha a div modulo-restrito
+            st.write("### Faça parte do nosso time de elite")
+            with st.form("cv_recrutamento"):
+                nome = st.text_input("Nome Completo")
+                zap = st.text_input("WhatsApp (com DDD)")
+                link = st.text_input("Link do LinkedIn ou Currículo")
+                if st.form_submit_button("Enviar Candidatura"):
+                    gc = conecta_planilha()
+                    if gc:
+                        gc.get_worksheet(2).append_row([datetime.now().strftime('%d/%m/%Y'), nome, zap, "Candidato", link])
+                        st.success("Candidatura enviada com sucesso!")
 
         elif menu == "🔐 Acesso Master":
             st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Login Master</h1></div>', unsafe_allow_html=True)
-            
-            # --- NOVA ESTRUTURA PARA FORÇAR CORES ---
-            with st.markdown('<div class="modulo-restrito">', unsafe_allow_html=True):
-                st.markdown("### Área restrita para gestão")
-                u = st.text_input("Usuário").lower().strip()
-                p = st.text_input("Senha", type="password")
-                if st.button("Acessar Painel"):
-                    try:
-                        users = st.secrets["credentials"]["usernames"]
-                        if u in users and p == users[u]:
-                            st.session_state["password_correct"] = True
-                            st.session_state["user_logado"] = u
-                            st.rerun()
-                        else: st.error("Acesso não autorizado.")
-                    except: st.error("Erro na configuração de usuários (Secrets).")
-            st.markdown('</div>', unsafe_allow_html=True) # Fecha a div modulo-restrito
+            st.write("### Área restrita para gestão")
+            u = st.text_input("Usuário").lower().strip()
+            p = st.text_input("Senha", type="password")
+            if st.button("Acessar Painel"):
+                try:
+                    users = st.secrets["credentials"]["usernames"]
+                    if u in users and p == users[u]:
+                        st.session_state["password_correct"] = True
+                        st.session_state["user_logado"] = u
+                        st.rerun()
+                    else: st.error("Acesso não autorizado.")
+                except: st.error("Erro nos Secrets.")
 
     st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 11px; margin-top:100px;'>© 2026 Imobiliária Janeide Xavier LTDA</p>", unsafe_allow_html=True)
 
