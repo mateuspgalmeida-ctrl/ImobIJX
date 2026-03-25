@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import io
 
 # --- 1. CONFIGURAÇÃO DE PÁGINA ---
-st.set_page_config(page_title="ImobIJX | Master Intelligence ERP", layout="wide", page_icon="🏢")
+st.set_page_config(page_title="ImobIJX | Master Intelligence", layout="wide", page_icon="🏢")
 
 # --- 2. CONFIGURAÇÕES DE NEGÓCIO ---
 STATUS_CLIENTE = ["Lead", "Cliente Potencial", "Cliente Realizado", "Cliente Fidelizado"]
@@ -21,19 +21,19 @@ DIAS_LIMITE_PARADO = 10
 st.markdown("""
     <style>
     .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
+    [data-testid="stSidebar"] { background-color: #1e293b; color: white; }
+    [data-testid="stSidebar"] * { color: white !important; }
     .kpi-card {
         background: white; padding: 25px; border-radius: 15px;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-        border-top: 5px solid #007a7c; text-align: center;
+        border-top: 5px solid #007a7c; text-align: center; color: #1e293b !important;
     }
     .mural-master {
         background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
         color: #fbbf24; padding: 30px; border-radius: 20px;
         border-left: 10px solid #fbbf24; margin-bottom: 30px;
     }
-    .master-badge { background-color: #1e293b; color: #fbbf24; padding: 5px 15px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid #fbbf24; }
-    .admin-badge { background-color: #007a7c; color: white; padding: 5px 15px; border-radius: 8px; font-size: 12px; font-weight: 600; }
-    .alerta-box { background-color: #fff1f2; border-left: 5px solid #e11d48; padding: 20px; border-radius: 10px; color: #9f1239; font-weight: 700; margin-bottom: 20px; }
+    .master-badge { background-color: #fbbf24; color: #1e293b !important; padding: 5px 15px; border-radius: 8px; font-size: 12px; font-weight: 800; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -58,27 +58,24 @@ def buscar_dados(aba_index):
         except: return pd.DataFrame()
     return pd.DataFrame()
 
-def identificar_leads_parados(df):
-    if df.empty: return pd.DataFrame()
-    limite = datetime.now() - timedelta(days=DIAS_LIMITE_PARADO)
-    return df[(df['Status'].isin(['Lead', 'Cliente Potencial'])) & (df['Data'] <= limite)]
-
 # --- 5. MAIN APP ---
 def main():
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
 
     with st.sidebar:
-        if os.path.exists("logo.jpg"): st.image("logo.jpg", use_container_width=True)
-        else: st.markdown("<h1 style='text-align:center; color:#007a7c;'>🏢 ImobIJX</h1>", unsafe_allow_html=True)
+        # Centralizando a logo na sidebar
+        col_logo_1, col_logo_2, col_logo_3 = st.columns([1, 4, 1])
+        with col_logo_2:
+            if os.path.exists("logo.jpg"): st.image("logo.jpg", use_container_width=True)
+            else: st.markdown("<h2 style='text-align:center;'>🏢 ImobIJX</h2>", unsafe_allow_html=True)
         
         st.divider()
         if st.session_state["password_correct"]:
             user_logado = st.session_state.get('user_logado', '').lower()
+            st.markdown(f"👤 Usuário: **{user_logado.upper()}**", unsafe_allow_html=True)
             if user_logado == "mateus":
-                st.markdown(f"👑 **{user_logado.upper()}** <br><span class='master-badge'>MASTER ACCESS</span>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"👤 **{user_logado.upper()}** <br><span class='admin-badge'>ADMINISTRATIVO</span>", unsafe_allow_html=True)
+                st.markdown("<span class='master-badge'>MASTER ACCESS</span>", unsafe_allow_html=True)
             
             menu = st.radio("SISTEMA GESTÃO", [
                 "🏛️ Mural Master", "📊 Dashboard Geral", "🔥 Zonas de Calor",
@@ -94,83 +91,70 @@ def main():
 
     # --- 6. LOGICA DE TELAS ---
     if st.session_state["password_correct"]:
-        df_corr = buscar_dados(0)
-        df_vendas = buscar_dados(1)
-        df_cv = buscar_dados(2)
         df_clientes = buscar_dados(3)
+        df_vendas = buscar_dados(1)
+        df_corr = buscar_dados(0)
+        df_cv = buscar_dados(2)
 
         if menu == "🏛️ Mural Master":
-            st.title("🏛️ Mural de Avisos Master")
+            st.title("🏛️ Mural de Avisos")
             st.markdown("""<div class="mural-master"><h3>📢 Alinhamento Estratégico 2026</h3><p>Foco no SIM e Noide Cerqueira. Limpem os leads parados!</p></div>""", unsafe_allow_html=True)
 
         elif menu == "📊 Dashboard Geral":
-            st.title("📊 Dashboard")
-            leads_parados = identificar_leads_parados(df_clientes)
-            if not leads_parados.empty:
-                st.markdown(f'<div class="alerta-box">⚠️ {len(leads_parados)} leads parados há mais de 10 dias!</div>', unsafe_allow_html=True)
+            st.title("📊 Indicadores de Performance")
             c1, c2, c3 = st.columns(3)
-            with c1: st.markdown(f'<div class="kpi-card"><p class="kpi-label">CRM</p><p class="kpi-val">{len(df_clientes)}</p></div>', unsafe_allow_html=True)
-            with c2: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Vendas</p><p class="kpi-val">{len(df_vendas)}</p></div>', unsafe_allow_html=True)
-            with c3: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Leads Novos</p><p class="kpi-val">{len(df_clientes[df_clientes["Status"]=="Lead"])}</p></div>', unsafe_allow_html=True)
+            with c1: st.markdown(f'<div class="kpi-card"><p>CRM</p><h3>{len(df_clientes)}</h3></div>', unsafe_allow_html=True)
+            with c2: st.markdown(f'<div class="kpi-card"><p>Vendas</p><h3>{len(df_vendas)}</h3></div>', unsafe_allow_html=True)
+            with c3: st.markdown(f'<div class="kpi-card"><p>Aguardando</p><h3>{len(df_clientes[df_clientes["Status"]=="Lead"])}</h3></div>', unsafe_allow_html=True)
 
         elif menu == "🔥 Zonas de Calor":
-            st.title("🔥 Zonas de Calor")
+            st.title("🔥 Zonas de Calor - Feira de Santana")
             if not df_clientes.empty and 'Bairro' in df_clientes.columns:
                 heat = df_clientes['Bairro'].value_counts().reset_index()
                 heat.columns = ['Bairro', 'Volume']
                 st.plotly_chart(px.bar(heat, x='Bairro', y='Volume', color='Volume', color_continuous_scale='OrRd'))
 
         elif menu == "🤝 CRM Clientes":
-            st.title("🤝 CRM")
-            tab1, tab2 = st.tabs(["Base", "Novo"])
-            with tab1: st.dataframe(df_clientes, use_container_width=True)
-            with tab2:
-                with st.form("add"):
-                    n = st.text_input("Nome")
-                    b = st.selectbox("Bairro", BAIRROS_FEIRA)
-                    s = st.selectbox("Status", STATUS_CLIENTE)
-                    if st.form_submit_button("Salvar"):
-                        gc = conecta_planilha()
-                        gc.get_worksheet(3).append_row([datetime.now().strftime('%d/%m/%Y'), n, "", s, b, "Portal", "Gestão"])
-                        st.success("Salvo!")
-                        st.cache_data.clear()
-
+            st.title("🤝 Gestão de Clientes")
+            st.dataframe(df_clientes, use_container_width=True)
+            
         elif menu == "🏆 Ranking Performance":
-            st.title("🏆 Ranking")
+            st.title("🏆 Ranking de Equipe")
             if not df_clientes.empty:
-                # Corrigido o erro de sintaxe aqui
-                parados_ranking = identificar_leads_parados(df_clientes).groupby('Corretor').size().reset_index(name='Leads Parados')
-                st.subheader("Leads Esquecidos por Corretor")
-                st.dataframe(parados_ranking, use_container_width=True)
-                st.plotly_chart(px.pie(df_clientes, names='Corretor', title="Distribuição Geral"))
+                st.plotly_chart(px.pie(df_clientes, names='Corretor', title="Divisão de Carteira"))
 
         elif menu == "🧠 People Analytics":
             st.title("🧠 People Analytics")
             fig = go.Figure(data=go.Scatterpolar(r=[4, 5, 4, 3, 5], theta=['Vendas','Processos','Foco','Clima','Engajamento'], fill='toself'))
             st.plotly_chart(fig)
-
-        elif menu == "👥 Equipe":
-            st.dataframe(df_corr, use_container_width=True)
-        elif menu == "💰 Vendas":
-            st.dataframe(df_vendas, use_container_width=True)
-        elif menu == "📄 Banco de Talentos":
-            st.dataframe(df_cv, use_container_width=True)
+            
+        elif menu == "👥 Equipe": st.dataframe(df_corr)
+        elif menu == "💰 Vendas": st.dataframe(df_vendas)
+        elif menu == "📄 Banco de Talentos": st.dataframe(df_cv)
 
     else:
         if menu == "🏠 Início":
-            st.markdown("<h1 style='text-align:center;'>Imobiliária Janeide Xavier</h1>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; margin-top:100px;'>", unsafe_allow_html=True)
+            st.title("Imobiliária Janeide Xavier")
+            st.subheader("Bem-vindo ao Atlas Intelligence")
+            st.write("Acesse o painel restrito para gerenciar a operação.")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
         elif menu == "🔐 Painel Restrito":
+            st.subheader("Login Administrativo")
             u = st.text_input("Usuário").lower().strip()
             p = st.text_input("Senha", type="password")
             if st.button("Entrar"):
-                users = st.secrets["credentials"]["usernames"]
-                if u in users and p == users[u]:
-                    st.session_state["password_correct"] = True
-                    st.session_state["user_logado"] = u
-                    st.rerun()
-                else: st.error("Erro!")
+                try:
+                    users = st.secrets["credentials"]["usernames"]
+                    if u in users and p == users[u]:
+                        st.session_state["password_correct"] = True
+                        st.session_state["user_logado"] = u
+                        st.rerun()
+                    else: st.error("Acesso Negado")
+                except: st.error("Configure os Secrets no Streamlit Cloud.")
 
-    st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 11px; margin-top:50px;'>© 2026 ImobIJX</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 11px; margin-top:100px;'>© 2026 ImobIJX</p>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
