@@ -25,7 +25,7 @@ st.markdown("""
     /* Fundo do App */
     .stApp { background-color: #f1f5f9; }
     
-    /* FORÇAR VERDE EM TÍTULOS E LABELS */
+    /* TEXTOS GERAIS (VERDE LOGO) */
     h1, h2, h3, p, span, label {
         color: #007a7c !important;
         font-family: 'Inter', sans-serif;
@@ -50,10 +50,21 @@ st.markdown("""
         margin: 0 !important;
     }
     
-    /* --- CORREÇÃO DO BOTÃO (TEXTO BRANCO) --- */
+    /* --- CORREÇÃO DOS CAMPOS DE DIGITAÇÃO (TEXTO BRANCO) --- */
+    input {
+        color: white !important; /* Cor do texto ao digitar */
+        -webkit-text-fill-color: white !important; /* Garante no Chrome/Safari */
+    }
+    
+    /* Garante que o texto dentro de áreas de texto também seja branco */
+    div[data-baseweb="input"] {
+        color: white !important;
+    }
+
+    /* --- CORREÇÃO DOS BOTÕES --- */
     .stButton>button {
         background-color: #007a7c !important;
-        color: white !important; /* Força o texto a ser branco */
+        color: white !important;
         border-radius: 10px;
         font-weight: bold !important;
         width: 100%;
@@ -62,21 +73,16 @@ st.markdown("""
         transition: 0.3s;
     }
     
-    /* Efeito ao passar o mouse no botão */
     .stButton>button:hover {
         background-color: #005a5c !important;
         color: white !important;
     }
 
-    /* Garante que o texto do botão não mude de cor por causa das regras globais */
-    .stButton>button p {
+    /* Força o texto branco dentro do botão (evita conflito global) */
+    .stButton>button div p {
         color: white !important;
     }
     
-    /* Estabilizar cor do texto digitado nos inputs */
-    .stTextInput input {
-        color: #1e293b !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -119,14 +125,13 @@ def main():
         if menu == "🏛️ Dashboard":
             st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Janeide Xavier LTDA</h1><p>Painel Master de Inteligência</p></div>', unsafe_allow_html=True)
             st.write("### Olá! Bem-vinda ao seu centro de controle.")
-        # Outros menus...
     else:
         if menu == "🏠 Início":
             st.markdown(f'''
                 <div class="moldura-3d">
                     <h1 class="titulo-principal">Imobiliária Janeide Xavier LTDA</h1>
                     <p style="font-size: 1.5rem; font-weight: 500;">
-                        Inteligência analítica no mercado imobiliário.
+                        Inteligência imobiliária em Feira de Santana.
                     </p>
                 </div>
             ''', unsafe_allow_html=True)
@@ -136,9 +141,9 @@ def main():
             st.markdown('<div class="moldura-3d"><h1 class="titulo-principal">Trabalhe Conosco</h1></div>', unsafe_allow_html=True)
             st.write("### Faça parte do nosso time de elite")
             with st.form("cv_recrutamento"):
-                nome = st.text_input("Nome Completo")
-                zap = st.text_input("WhatsApp (com DDD)")
-                link = st.text_input("Link do LinkedIn ou Currículo")
+                nome = st.text_input("Nome Completo", placeholder="Digite seu nome aqui...")
+                zap = st.text_input("WhatsApp (com DDD)", placeholder="(75) 99999-9999")
+                link = st.text_input("Link do LinkedIn ou Currículo", placeholder="https://...")
                 if st.form_submit_button("Enviar Candidatura"):
                     gc = conecta_planilha()
                     if gc:
