@@ -37,9 +37,7 @@ st.markdown("""
     }
     .kpi-label { color: #64748b; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; }
     .kpi-val { color: #0f172a; font-size: 1.8rem; font-weight: 800; }
-    .status-tag {
-        padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;
-    }
+    .sidebar-user { font-weight: 700; color: #007a7c; font-size: 1.1rem; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -83,8 +81,19 @@ def main():
         if not st.session_state["password_correct"]:
             menu = st.radio("NAVEGAÇÃO", ["🏠 Início", "🎯 Trabalhe Conosco", "🔐 Painel Restrito"])
         else:
-            st.success(f"Logado: {st.session_state.get('user_logado', 'Gestor')}")
-            menu = st.radio("ADMINISTRAÇÃO", ["📊 Dashboard", "🤝 Clientes (CRM)", "🧠 People Analytics", "👥 Corretores", "💰 Vendas", "📄 Currículos"])
+            # Identificação do usuário logado (Janeide ou Gessica)
+            u_name = st.session_state.get('user_logado', 'Usuário').capitalize()
+            st.markdown(f"Bem-vinda, <span class='sidebar-user'>{u_name}</span>!", unsafe_allow_html=True)
+            
+            # Ambas têm acesso a TODAS as opções abaixo
+            menu = st.radio("ADMINISTRAÇÃO", [
+                "📊 Dashboard", 
+                "🤝 Clientes (CRM)", 
+                "🧠 People Analytics", 
+                "👥 Corretores", 
+                "💰 Vendas", 
+                "📄 Currículos"
+            ])
             
             st.divider()
             hoje = datetime.now()
@@ -92,7 +101,7 @@ def main():
             mes_sel_nome = st.selectbox("Mês", list(MESES_PT.values()), index=hoje.month-1)
             mes_sel_num = [k for k, v in MESES_PT.items() if v == mes_sel_nome][0]
             
-            if st.button("🚪 Sair"):
+            if st.button("🚪 Sair do Sistema"):
                 st.session_state["password_correct"] = False
                 st.rerun()
 
@@ -100,74 +109,46 @@ def main():
     df_corr = buscar_dados(0)
     df_vendas_raw = buscar_dados(1)
     df_cv = buscar_dados(2)
-    df_clientes = buscar_dados(3) # ABA NOVA DE CLIENTES
+    df_clientes = buscar_dados(3)
 
-    # --- LÓGICA DE TELAS ADMIN ---
+    # --- TELAS ADMINISTRATIVAS (ACESSO TOTAL) ---
     if st.session_state["password_correct"]:
         
         if menu == "📊 Dashboard":
-            st.title(f"📊 Dashboard Estratégico - {mes_sel_nome}/{ano_sel}")
+            st.title(f"📊 Painel de Controle - {mes_sel_nome}/{ano_sel}")
+            c1, c2, c3 = st.columns(3)
+            with c1: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Total Clientes</p><p class="kpi-val">{len(df_clientes)}</p></div>', unsafe_allow_html=True)
+            with c2: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Leads Ativos</p><p class="kpi-val">{len(df_clientes[df_clientes["Status"]=="Lead"]) if not df_clientes.empty else 0}</p></div>', unsafe_allow_html=True)
+            with c3: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Time de Vendas</p><p class="kpi-val">{len(df_corr)}</p></div>', unsafe_allow_html=True)
             
-            # KPIs Rápidos
-            c1, c2, c3, c4 = st.columns(4)
-            vgv_total = df_vendas_raw['Valor'].apply(limpar_moeda).sum() if not df_vendas_raw.empty else 0
-            qtd_clientes = len(df_clientes) if not df_clientes.empty else 0
-            
-            with c1: st.markdown(f'<div class="kpi-card"><p class="kpi-label">VGV Geral</p><p class="kpi-val">R$ {vgv_total:,.0f}</p></div>', unsafe_allow_html=True)
-            with c2: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Base Clientes</p><p class="kpi-val">{qtd_clientes}</p></div>', unsafe_allow_html=True)
-            with c3: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Leads Ativos</p><p class="kpi-val">{len(df_clientes[df_clientes["Status"]=="Lead"]) if qtd_clientes > 0 else 0}</p></div>', unsafe_allow_html=True)
-            with c4: st.markdown(f'<div class="kpi-card"><p class="kpi-label">Corretores</p><p class="kpi-val">{len(df_corr)}</p></div>', unsafe_allow_html=True)
-
-            st.divider()
-            col_a, col_b = st.columns([2,1])
-            with col_a:
-                st.subheader("📈 Funil de Conversão (Clientes)")
-                if not df_clientes.empty:
-                    funil_data = df_clientes['Status'].value_counts().reindex(STATUS_CLIENTE).fillna(0)
-                    fig_funil = px.funnel(x=funil_data.values, y=funil_data.index, color=funil_data.index, color_discrete_sequence=px.colors.qualitative.Teal)
-                    st.plotly_chart(fig_funil, use_container_width=True)
-            with col_b:
-                st.subheader("🎨 Social Media")
-                st.info("Dica: Use os dados do ranking para seus cards semanais.")
-                if st.button("Gerar Card de Feedback"):
-                    st.success("Card gerado na memória! (Simulação de integração Canva/Design)")
+            if not df_clientes.empty:
+                funil_data = df_clientes['Status'].value_counts().reindex(STATUS_CLIENTE).fillna(0)
+                fig_funil = px.funnel(x=funil_data.values, y=funil_data.index, title="Funil Estratégico", color_discrete_sequence=['#007a7c'])
+                st.plotly_chart(fig_funil, use_container_width=True)
 
         elif menu == "🤝 Clientes (CRM)":
             st.title("🤝 Gestão de Relacionamento (CRM)")
-            
-            tab_lista, tab_novo = st.tabs(["📋 Carteira de Clientes", "➕ Novo Lead/Cliente"])
-            
-            with tab_lista:
-                if not df_clientes.empty:
-                    filtro_status = st.multiselect("Filtrar por Status", STATUS_CLIENTE, default=STATUS_CLIENTE)
-                    df_c_filt = df_clientes[df_clientes['Status'].isin(filtro_status)]
-                    st.dataframe(df_c_filt, use_container_width=True)
-                else:
-                    st.warning("Nenhum cliente cadastrado na aba 'Clientes' da planilha.")
-
-            with tab_novo:
-                with st.form("form_cliente"):
-                    c1, c2 = st.columns(2)
-                    nome_cl = c1.text_input("Nome do Cliente")
-                    tel_cl = c2.text_input("WhatsApp")
-                    status_cl = st.selectbox("Classificação", STATUS_CLIENTE)
-                    interesse = st.selectbox("Interesse", ["Compra - Residencial", "Compra - Luxo", "Aluguel", "Terreno/Lote", "Investimento"])
-                    corretor_resp = st.selectbox("Corretor Responsável", df_corr['Nome'].unique() if not df_corr.empty else ["Nenhum"])
-                    
-                    if st.form_submit_button("Salvar no CRM"):
+            tab_ver, tab_add = st.tabs(["🔍 Visualizar Base", "📝 Novo Cadastro"])
+            with tab_ver:
+                st.dataframe(df_clientes, use_container_width=True)
+            with tab_add:
+                with st.form("crm_form"):
+                    nome = st.text_input("Nome do Cliente")
+                    fone = st.text_input("WhatsApp")
+                    stt = st.selectbox("Status Atual", STATUS_CLIENTE)
+                    corr = st.selectbox("Corretor Responsável", df_corr['Nome'].unique() if not df_corr.empty else ["Gestão"])
+                    if st.form_submit_button("Registrar Cliente"):
                         gc = conecta_planilha()
-                        if gc:
-                            gc.get_worksheet(3).append_row([datetime.now().strftime('%d/%m/%Y'), nome_cl, tel_cl, status_cl, interesse, "Portal Interno", corretor_resp])
-                            st.cache_data.clear()
-                            st.success("Cliente adicionado com sucesso!")
-                            st.rerun()
+                        gc.get_worksheet(3).append_row([datetime.now().strftime('%d/%m/%Y'), nome, fone, stt, "", "Portal Interno", corr])
+                        st.success(f"Cliente registrado com sucesso por {st.session_state['user_logado']}!")
+                        st.cache_data.clear()
+                        st.rerun()
 
         elif menu == "🧠 People Analytics":
-            st.title("🧠 People Analytics")
-            st.write("Análise de Clima e Performance da Equipe")
-            # Gráfico de Radar simulando competências médias da equipe
-            fig_radar = go.Figure()
-            fig_radar.add_trace(go.Scatterpolar(r=[4, 3, 5, 2, 4], theta=['Vendas','Processos','Foco','Sistemas','Comunicação'], fill='toself'))
+            st.title("🧠 People Analytics & Talentos")
+            st.write("Análise de desempenho e clima organizacional.")
+            # Radar de Competências (Exemplo fixo para visualização)
+            fig_radar = go.Figure(data=go.Scatterpolar(r=[4, 5, 3, 4, 4], theta=['Vendas','Ética','Sistemas','Comunicação','Foco'], fill='toself'))
             st.plotly_chart(fig_radar)
 
         elif menu == "👥 Corretores":
@@ -175,47 +156,45 @@ def main():
             st.dataframe(df_corr, use_container_width=True)
 
         elif menu == "💰 Vendas":
-            st.title("💰 Histórico de Vendas")
+            st.title("💰 Histórico Financeiro e Comissões")
             st.dataframe(df_vendas_raw, use_container_width=True)
 
         elif menu == "📄 Currículos":
-            st.title("📄 Banco de Talentos")
+            st.title("📄 Banco de Talentos (R&S)")
             st.dataframe(df_cv, use_container_width=True)
-            st.divider()
-            st.subheader("📝 Roteiro de Entrevista R&S")
-            st.markdown("""
-            1. **Qualificações:** Conte sobre seu histórico em vendas complexas.
-            2. **Resiliência:** Como lida com o 'não' em uma negociação de alto valor?
-            3. **Processo:** Qual sua rotina de prospecção diária?
-            """)
 
     # --- TELAS PÚBLICAS ---
     else: 
         if menu == "🏠 Início":
             st.markdown("<h1 style='text-align: center; color: #007a7c; padding-top: 50px;'>Imobiliária Janeide Xavier LTDA</h1>", unsafe_allow_html=True)
-            st.info("Acesse o Painel Restrito para gerenciar Leads, Vendas e Pessoas.")
+            st.write("Portal interno de gestão e recrutamento.")
             
         elif menu == "🎯 Trabalhe Conosco":
             st.title("🎯 Faça parte do nosso time")
-            with st.form("cv_publico"):
-                n = st.text_input("Nome")
-                t = st.text_input("Telefone")
-                e = st.selectbox("Experiência", ["Iniciante", "1-3 anos", "Especialista"])
-                if st.form_submit_button("Enviar"):
+            with st.form("cv_pub"):
+                n_cv = st.text_input("Nome")
+                t_cv = st.text_input("Telefone")
+                if st.form_submit_button("Enviar Currículo"):
                     gc = conecta_planilha()
-                    gc.get_worksheet(2).append_row([datetime.now().strftime('%d/%m/%Y'), n, t, e, "Candidato via Portal"])
-                    st.success("Recebido!")
+                    gc.get_worksheet(2).append_row([datetime.now().strftime('%d/%m/%Y'), n_cv, t_cv, "Via Portal", "Interesse"])
+                    st.success("Dados enviados!")
 
         elif menu == "🔐 Painel Restrito":
             st.subheader("Login Administrativo")
-            u = st.text_input("Usuário")
-            p = st.text_input("Senha", type="password")
-            if st.button("Acessar", type="primary"):
-                if u in st.secrets["credentials"]["usernames"] and p == st.secrets["credentials"]["usernames"][u]:
-                    st.session_state["password_correct"] = True
-                    st.session_state["user_logado"] = u
-                    st.rerun()
-                else: st.error("Erro de acesso.")
+            u_input = st.text_input("Usuário").lower().strip()
+            p_input = st.text_input("Senha", type="password")
+            
+            if st.button("Entrar", type="primary"):
+                try:
+                    users = st.secrets["credentials"]["usernames"]
+                    if u_input in users and p_input == users[u_input]:
+                        st.session_state["password_correct"] = True
+                        st.session_state["user_logado"] = u_input
+                        st.rerun()
+                    else:
+                        st.error("Dados incorretos.")
+                except:
+                    st.error("Erro na configuração de usuários (Secrets).")
 
     st.markdown("<p style='text-align: center; color: #94a3b8; font-size: 11px; margin-top:50px;'>© 2026 ImobIJX | Atlas Intelligence</p>", unsafe_allow_html=True)
 
