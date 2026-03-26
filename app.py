@@ -130,8 +130,8 @@ def main():
     else:
         # TELAS PÚBLICAS
         if menu == "🏠 Início":
-            st.markdown(f'''<div class="moldura-3d"><h1>Janeide Xavier LTDA</h1>
-                <p style="font-size: 1.5rem; font-weight: 500;">Onde a tradição de Feira de Santana encontra a inteligência de dados.</p></div>''', unsafe_allow_html=True)
+            st.markdown(f'''<div class="moldura-3d"><h1>Imobiliária Janeide Xavier LTDA</h1>
+                <p style="font-size: 1.5rem; font-weight: 500;">Inteligência no mercado imobiliário.</p></div>''', unsafe_allow_html=True)
             if lottie_anim: st_lottie(lottie_anim, height=350)
             
         elif menu == "🎯 Trabalhe Conosco":
